@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import './App.css'
 import AgentWidget from './components/AgentWidget'
 import ThemeToggle from './components/ThemeToggle'
+import AuthButton from './components/AuthButton'
+import AppointmentForm from './components/AppointmentForm'
 
 function App() {
   return (
@@ -15,7 +17,7 @@ function App() {
             <a href="#styles">Hair Styles</a>
             <a href="#locations">Locations</a>
             <a href="#appointments">Appointments</a>
-            <Link to="/login" className="btn ghost">Login</Link>
+            <AuthButton />
             <ThemeToggle />
           </nav>
         </div>
@@ -24,6 +26,13 @@ function App() {
       <main>
         <section className="hero">
           <div className="container hero-inner">
+            <div className="grid-bg" />
+            <div className="tools">
+              <span className="tool scissors" aria-hidden>✂️</span>
+              <span className="tool trimmer" aria-hidden>💈</span>
+              <span className="tool razor" aria-hidden>🪒</span>
+              <span className="tool sprayer" aria-hidden>💦</span>
+            </div>
             <div>
               <h1>Find your next cut in San Francisco</h1>
               <p className="lead">An AI agent that locates top-rated Bay Area barbershops near you.</p>
@@ -104,37 +113,7 @@ function App() {
         <section id="appointments" className="section">
           <div className="container">
             <h2>Appointments</h2>
-            <form className="form">
-              <div className="grid two">
-                <label>
-                  <span>Name</span>
-                  <input placeholder="Full name" />
-                </label>
-                <label>
-                  <span>Service</span>
-                  <select>
-                    <option>Basic Cut</option>
-                    <option>Fade + Style</option>
-                    <option>Beard & Line-up</option>
-                  </select>
-                </label>
-              </div>
-              <div className="grid two">
-                <label>
-                  <span>Date</span>
-                  <input type="date" />
-                </label>
-                <label>
-                  <span>Time</span>
-                  <input type="time" />
-                </label>
-              </div>
-              <label>
-                <span>Notes</span>
-                <textarea placeholder="Preferences, barber name, etc." rows={3} />
-              </label>
-              <button className="btn primary" type="button">Request Booking</button>
-            </form>
+            <AppointmentForm />
           </div>
         </section>
       </main>
