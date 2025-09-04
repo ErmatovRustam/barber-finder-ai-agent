@@ -3,7 +3,25 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import Login from './pages/Login.tsx'
+import UserProfile from './components/UserProfile.tsx'
+import { AuthProvider } from './contexts/AuthContext.tsx'
+
+// Initialize theme immediately to prevent white page
+function initializeTheme() {
+  try {
+    const stored = localStorage.getItem('theme')
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+    const theme = stored === 'dark' || stored === 'light' ? stored : (prefersDark ? 'dark' : 'light')
+    document.documentElement.setAttribute('data-theme', theme)
+    console.log('Theme initialized:', theme)
+  } catch (error) {
+    console.error('Theme initialization error:', error)
+    // Fallback to dark theme
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }
+}
+
+initializeTheme()
 
 const router = createBrowserRouter([
   {
@@ -11,13 +29,23 @@ const router = createBrowserRouter([
     element: <App />,
   },
   {
-    path: '/login',
-    element: <Login />,
+    path: '/profile',
+    element: <UserProfile />,
   },
 ])
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
-)
+console.log('Starting app render...')
+
+try {
+  const root = createRoot(document.getElementById('root')!)
+  root.render(
+    <StrictMode>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </StrictMode>,
+  )
+  console.log('App rendered successfully')
+} catch (error) {
+  console.error('App render error:', error)
+}
