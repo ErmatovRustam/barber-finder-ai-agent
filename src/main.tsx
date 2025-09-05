@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import UserProfile from './components/UserProfile.tsx'
 import { AuthProvider } from './contexts/AuthContext.tsx'
+import { CartProvider } from './contexts/CartContext.tsx'
 
 // Initialize theme immediately to prevent white page
 function initializeTheme() {
@@ -41,7 +42,9 @@ try {
   root.render(
     <StrictMode>
       <AuthProvider>
-        <RouterProvider router={router} />
+        <CartProvider>
+          <RouterProvider router={router} />
+        </CartProvider>
       </AuthProvider>
     </StrictMode>,
   )

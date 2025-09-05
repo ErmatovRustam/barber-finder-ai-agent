@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, memo, useMemo } from 'react'
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import { db, auth } from '../firebase/config'
 import { useAuth } from '../contexts/AuthContext'
+import { Link } from 'react-router-dom'
 
 interface Appointment {
   id: string
@@ -13,16 +14,17 @@ interface Appointment {
   createdAt: any
 }
 
-export default function UserProfile() {
+const UserProfile = memo(function UserProfile() {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!user) return
 
     async function fetchAppointments() {
       try {
+        setLoading(true)
         const q = query(
           collection(db, 'appointments'),
           where('userId', '==', user.uid),
@@ -44,37 +46,53 @@ export default function UserProfile() {
     fetchAppointments()
   }, [user])
 
-  async function handleSignOut() {
+  const handleSignOut = useCallback(async () => {
     try {
       await signOut(auth)
     } catch (error) {
       console.error('Sign-out error:', error)
     }
-  }
+  }, [])
 
+  const userInfo = useMemo(() => ({
+    displayName: user?.displayName || 'User',
+    email: user?.email || 'No email',
+    firstName: user?.displayName?.split(' ')[0] || 'User',
+    lastName: user?.displayName?.split(' ').slice(1).join(' ') || ''
+  }), [user])
+
+  // Early returns after all hooks
   if (!user) {
     return <div>Please sign in to view your profile</div>
   }
 
-  if (loading) {
-    return <div>Loading...</div>
-  }
-
-  const displayName = user.displayName || user.email?.split('@')[0] || 'User'
-
   return (
     <div className="user-profile">
       <div className="profile-header">
-        <h2>Welcome, {displayName}!</h2>
-        <p>Manage your appointments and payments</p>
-        <button onClick={handleSignOut} className="btn ghost">
-          Sign Out
-        </button>
+        <div className="user-info">
+          <h2>Welcome, {userInfo.firstName}!</h2>
+          <div className="user-details">
+            <p><strong>Full Name:</strong> {userInfo.displayName}</p>
+            <p><strong>Email:</strong> {userInfo.email}</p>
+          </div>
+        </div>
+        <div className="profile-actions">
+          <Link to="/" className="btn primary">
+            ← Back to Main Page
+          </Link>
+          <button onClick={handleSignOut} className="btn ghost">
+            Sign Out
+          </button>
+        </div>
       </div>
 
       <div className="profile-section">
         <h3>Your Appointments</h3>
-        {appointments.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
+            Loading appointments...
+          </div>
+        ) : appointments.length === 0 ? (
           <p>No appointments yet. Book your first cut!</p>
         ) : (
           <div className="appointments-list">
@@ -104,4 +122,6 @@ export default function UserProfile() {
       </div>
     </div>
   )
-}
+})
+
+export default UserProfile

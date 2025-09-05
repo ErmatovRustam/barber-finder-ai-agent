@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,7 +11,7 @@ interface AppointmentData {
   notes: string
 }
 
-export default function AppointmentForm() {
+const AppointmentForm = memo(function AppointmentForm() {
   const { user } = useAuth()
   const [formData, setFormData] = useState<AppointmentData>({
     name: '',
@@ -23,15 +23,7 @@ export default function AppointmentForm() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  if (!user) {
-    return (
-      <div className="auth-required">
-        <p>Please sign in to book appointments</p>
-      </div>
-    )
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
 
@@ -51,6 +43,15 @@ export default function AppointmentForm() {
     } finally {
       setLoading(false)
     }
+  }, [formData, user])
+
+  // Early returns after all hooks
+  if (!user) {
+    return (
+      <div className="auth-required">
+        <p>Please sign in to book appointments</p>
+      </div>
+    )
   }
 
   if (success) {
@@ -127,4 +128,6 @@ export default function AppointmentForm() {
       </button>
     </form>
   )
-}
+})
+
+export default AppointmentForm

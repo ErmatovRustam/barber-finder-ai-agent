@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, memo } from 'react'
 
 type GeoPosition = {
   latitude: number
@@ -12,7 +12,7 @@ type Result = {
   city: string
 }
 
-export default function AgentWidget() {
+const AgentWidget = memo(function AgentWidget() {
   const [position, setPosition] = useState<GeoPosition | null>(null)
   const [status, setStatus] = useState<string>('Ready')
   const [query, setQuery] = useState<string>('barbershop')
@@ -36,7 +36,7 @@ export default function AgentWidget() {
     )
   }, [])
 
-  function simulateSearch() {
+  const simulateSearch = useCallback(() => {
     setStatus('Searching nearby...')
     // Placeholder static results focused on Bay Area
     const sample: Result[] = [
@@ -48,7 +48,7 @@ export default function AgentWidget() {
       setResults(sample)
       setStatus('Done')
     }, 700)
-  }
+  }, [])
 
   return (
     <div className="agent">
@@ -83,6 +83,8 @@ export default function AgentWidget() {
       )}
     </div>
   )
-}
+})
+
+export default AgentWidget
 
 
