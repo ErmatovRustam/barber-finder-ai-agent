@@ -27,7 +27,7 @@ const UserProfile = memo(function UserProfile() {
         setLoading(true)
         const q = query(
           collection(db, 'appointments'),
-          where('userId', '==', user.uid),
+          where('userId', '==', user!.uid),
           orderBy('createdAt', 'desc')
         )
         const snapshot = await getDocs(q)

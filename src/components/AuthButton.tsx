@@ -47,6 +47,15 @@ const AuthButton = memo(function AuthButton() {
 
   const userDisplayInfo = useMemo(() => {
     if (!user) return null
+    
+    // Debug: Log user data to understand the issue
+    console.log('AuthButton - User data:', {
+      uid: user.uid,
+      displayName: user.displayName,
+      email: user.email,
+      phoneNumber: user.phoneNumber
+    })
+    
     return {
       displayName: user.displayName || 'User',
       email: user.email || '',
@@ -121,7 +130,7 @@ const AuthButton = memo(function AuthButton() {
       {showModal && (
         <AuthModal 
           isOpen={showModal} 
-          onClose={closeModal} 
+          onClose={closeModal}
         />
       )}
     </>

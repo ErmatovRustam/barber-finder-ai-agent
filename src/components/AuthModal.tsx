@@ -8,13 +8,11 @@ import {
   GoogleAuthProvider,
   GithubAuthProvider,
   RecaptchaVerifier,
-  signInWithPhoneNumber,
-  PhoneAuthProvider,
-  signInWithCredential
+  signInWithPhoneNumber
 } from 'firebase/auth'
 import { auth } from '../firebase/config'
 
-type AuthMode = 'signin' | 'signup' | 'forgot' | 'phone'
+type AuthMode = 'signin' | 'signup' | 'forgot' | 'phone' | 'phone-name' | 'phone-sms'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -26,7 +24,6 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>('signin')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [phoneVerificationId, setPhoneVerificationId] = useState<string | null>(null)
   const [confirmationResult, setConfirmationResult] = useState<any>(null)
   
   // Form data
@@ -74,6 +71,14 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setError('Password reset email sent! Check your inbox.')
         setTimeout(() => setMode('signin'), 2000)
       } else if (mode === 'phone') {
+        // First step: collect name, then move to phone input
+        if (!formData.firstName || !formData.lastName) {
+          setError('Please enter both first and last name')
+          return
+        }
+        setMode('phone-name')
+        setError(null)
+      } else if (mode === 'phone-name') {
         if (!confirmationResult) {
           // Send SMS code
           const appVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -85,18 +90,31 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
           
           const result = await signInWithPhoneNumber(auth, formData.phoneNumber, appVerifier)
           setConfirmationResult(result)
+          setMode('phone-sms')
           setError('SMS code sent! Enter the 6-digit code below.')
-        } else {
-          // Verify SMS code
-          await confirmationResult.confirm(formData.smsCode)
-          onClose()
         }
+      } else if (mode === 'phone-sms') {
+        // Verify SMS code and update profile with name
+        const result = await confirmationResult.confirm(formData.smsCode)
+        
+        // Update the user's profile with their name
+        await updateProfile(result.user, {
+          displayName: `${formData.firstName} ${formData.lastName}`
+        })
+        
+        // Force a reload of the user data to ensure the updated profile is reflected
+        await result.user.reload()
+        
+        // Debug: Log the updated user data
+        console.log('Updated user displayName:', result.user.displayName)
+        
+        onClose()
       }
     } catch (error: any) {
       setError(error.message || 'An error occurred')
       
       // If signInWithPhoneNumber results in an error, reset the reCAPTCHA
-      if (mode === 'phone' && !confirmationResult) {
+      if ((mode === 'phone-name' || mode === 'phone-sms') && !confirmationResult) {
         const recaptchaContainer = document.getElementById('recaptcha-container')
         if (recaptchaContainer) {
           recaptchaContainer.innerHTML = ''
@@ -106,6 +124,7 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setLoading(false)
     }
   }, [mode, formData, confirmationResult, onClose])
+
 
   const resetForm = useCallback(() => {
     setFormData({
@@ -118,7 +137,6 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
       smsCode: ''
     })
     setError(null)
-    setPhoneVerificationId(null)
     setConfirmationResult(null)
   }, [])
 
@@ -175,18 +193,22 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {mode === 'signup' && 'Create Account'}
             {mode === 'signin' && 'Sign In'}
             {mode === 'forgot' && 'Reset Password'}
-            {mode === 'phone' && (confirmationResult ? 'Enter SMS Code' : 'Phone Sign In')}
+            {mode === 'phone' && 'Phone Sign In'}
+            {mode === 'phone-name' && 'Enter Your Phone Number'}
+            {mode === 'phone-sms' && 'Enter SMS Code'}
           </h2>
           <p className="auth-subtitle">
             {mode === 'signup' && 'Join us to book appointments'}
             {mode === 'signin' && 'Welcome back'}
             {mode === 'forgot' && 'Enter your email to reset password'}
-            {mode === 'phone' && (confirmationResult ? 'Check your phone for the verification code' : 'Enter your phone number to receive a code')}
+            {mode === 'phone' && 'Please provide your name to get started'}
+            {mode === 'phone-name' && 'Enter your phone number to receive a verification code'}
+            {mode === 'phone-sms' && 'Check your phone for the verification code'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
-          {mode === 'signup' && (
+          {(mode === 'signup' || mode === 'phone') && (
             <div className="grid two">
               <label>
                 <span>First Name</span>
@@ -211,7 +233,7 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </div>
           )}
 
-          {mode !== 'phone' && (
+          {mode !== 'phone' && mode !== 'phone-name' && mode !== 'phone-sms' && (
             <label>
               <span>Email</span>
               <input
@@ -224,7 +246,7 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </label>
           )}
 
-          {mode !== 'forgot' && mode !== 'phone' && (
+          {mode !== 'forgot' && mode !== 'phone' && mode !== 'phone-name' && mode !== 'phone-sms' && (
             <label>
               <span>Password</span>
               <input
@@ -250,7 +272,7 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </label>
           )}
 
-          {mode === 'phone' && !confirmationResult && (
+          {mode === 'phone-name' && (
             <label>
               <span>Phone Number</span>
               <input
@@ -263,7 +285,7 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </label>
           )}
 
-          {mode === 'phone' && confirmationResult && (
+          {mode === 'phone-sms' && (
             <>
               <label>
                 <span>SMS Verification Code</span>
@@ -280,7 +302,10 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 Didn't receive the code?{' '}
                 <button 
                   type="button"
-                  onClick={() => setConfirmationResult(null)}
+                  onClick={() => {
+                    setConfirmationResult(null)
+                    setMode('phone-name')
+                  }}
                   className="link"
                   style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}
                 >
@@ -297,7 +322,7 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
           )}
 
           {/* Social Sign-In Buttons */}
-          {mode !== 'forgot' && mode !== 'phone' && (
+          {mode !== 'forgot' && mode !== 'phone' && mode !== 'phone-name' && mode !== 'phone-sms' && (
             <>
               <div className="social-buttons">
                 <button 
@@ -342,7 +367,9 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
             {loading ? 'Processing...' : (
               mode === 'signup' ? 'Create Account' :
               mode === 'signin' ? 'Sign In' :
-              mode === 'phone' ? (confirmationResult ? 'Verify Code' : 'Send SMS Code') :
+              mode === 'phone' ? 'Continue' :
+              mode === 'phone-name' ? 'Send SMS Code' :
+              mode === 'phone-sms' ? 'Verify Code' :
               'Send Reset Email'
             )}
           </button>
@@ -367,6 +394,12 @@ const AuthModal = memo(function AuthModal({ isOpen, onClose }: AuthModalProps) {
           )}
           {mode === 'phone' && (
             <p><button onClick={() => switchMode('signin')} className="link">Back to email sign in</button></p>
+          )}
+          {mode === 'phone-name' && (
+            <p><button onClick={() => setMode('phone')} className="link">Back to name entry</button></p>
+          )}
+          {mode === 'phone-sms' && (
+            <p><button onClick={() => setMode('phone-name')} className="link">Back to phone number</button></p>
           )}
         </div>
         
